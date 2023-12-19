@@ -888,10 +888,6 @@ But it is not a big deal as
 * One of the functions has to be a local function on the generic parameter, which is not a common case.
 * It may be automatically fixed with the migration tool.
 
-# Questions for implementation
-
-1. TODO: [Scala bugs](https://github.com/lampepfl/dotty/issues?q=label%3Aitype%3Abug+label%3Aarea%3Agadt)
-
 # References
 
 1.  [Presentation of the implementation in Scala 3 from the typelevel summit](https://www.youtube.com/watch?v=VV9lPg3fNl8)
@@ -904,33 +900,3 @@ But it is not a big deal as
 
 [//]: # (4.  [Dotty PR 1]&#40;https://github.com/lampepfl/dotty/pull/5736&#41;, )
 [//]: # (    [Dotty PR 2]&#40;https://github.com/lampepfl/dotty/pull/6398&#41;)
-
-# Examples
-
-1.  For code showing the unsoundness of the GADTs in Scala 2:
-
-    ```Kotlin
-    open class C<out T>
-    data class D<S>(var s: S) : C<S>()
-
-    fun main() {
-      val x = D("")
-      val y: C<Any> = x
-
-      when (y) {
-        is D<*> -> {
-          // Should not typecheck! 
-          // But it does in Scala2, fixed in Scala3
-          y.s = Integer(1) // Scala2: y is D<Any> 
-        }
-      }
-      val z: String = x.s as String
-      // Scala2: ClassCastException: Integer cannot be cast to String
-    }
-    ```
-
-    We will result a constraints $S_{real} <: Any$ which is not enough
-    to infer $S_{real}$ due to absence of variance in $D$. (We could
-    generate existential variable in that place and add a constraint for
-    it, but I guess that it would not worth it, except if Kotlin already
-    supports an existential variables in the compiler)
