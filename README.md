@@ -346,8 +346,8 @@ The algorithm consists of the following steps:
    so record the constraint $R_{S_{i}} :> S_{i}$ for the second phase.
 4. For each classifier $S_{i,j}$ which is the lowest upper bound of $S_{i}$ and $S_{j}$, 
    project runtime type $R$ upcasted from $R_{S_{i}}$ and $R+{S_{j}}$ on $S_{i,j}$ 
-   and denote them as $R^{S_{i,j}}_{S_{i}}$ and $R^{S_{i,j}}_{S_{j}}$.
-5. Record the constraint $R^{S_{i,j}}_{S_{i}} = R^{S_{i,j}}_{S_{j}}$,
+   and denote them as $R_{S_{i}}^{S_{i,j}}$ and $R_{S_{j}}^{S_{i,j}}$.
+5. Record the constraint $R_{S_{i}}^{S_{i,j}} = R_{S_{j}}^{S_{i,j}}$,
    where = means syntactic equality of types.
 
 The last step of the algorithm justified by the following paragraph of the Kotlin's specification:
@@ -355,7 +355,7 @@ The last step of the algorithm justified by the following paragraph of the Kotli
 > the transitive closure S∗(T) of the set of type supertypes S(T : \(S_1\), . . . , \(S_m\)) = {\(S_1\), . . . , \(S_m\)} ∪ S(\(S_1\)) ∪ . . . ∪ S(\(S_m\))
 > is consistent, i.e., does not contain two parameterized types with different type arguments.
 
-As $R^{S_{i,j}}_{S_{i}}$ and $R^{S_{i,j}}_{S_{j}}$ are projections of the same runtime type on the same classifier,
+As $R_{S_{i}}^{S_{i,j}}$ and $R_{S_{j}}^{S_{i,j}}$ are projections of the same runtime type on the same classifier,
 they are equal to each other.
 
 ### Compared to Scala
@@ -426,9 +426,9 @@ Let's review the algorithm step by step.
 
 1. Not applicable.
 2. Project runtime type on `Expr` and `ExprInt` and generate a fresh variable `R` for the type parameter of `Expr`.
-3. Record the constraints $Expr<T> :> Expr<R>$ and $ExprInt :> ExprInt$.
-4. Project runtime type on `Expr` upcasted from the corresponding projections and receive types $Expr<R>$ and $Expr<Int>$.
-5. Record the constraint $Expr<R> = Expr<Int>$.
+3. Record the constraints `Expr<T> :> Expr<R>` and `ExprInt :> ExprInt`.
+4. Project runtime type on `Expr` upcasted from the corresponding projections and receive types `Expr<R>` and `Expr<Int>`.
+5. Record the constraint `Expr<R> = Expr<Int>`.
 
 #### Several least common classifiers
 
@@ -458,13 +458,13 @@ Let's review the algorithm step by step.
 1. Not applicable.
 2. Project runtime type on `TExpr` and `ExprInt` 
    and generate a fresh variables `R1` and `R2` for the type parameters of `TExpr`.
-3. Record the constraints $TExpr<E, T> :> TExpr<R1, R2>$ and $ExprInt :> ExprInt$.
+3. Record the constraints `TExpr<E, T> :> TExpr<R1, R2>` and `ExprInt :> ExprInt`.
 4. Project runtime type on `Expr` upcasted from the corresponding projections 
-   and receive types $Expr<R1>$ and $Expr<Int>$.
-5. Record the constraint $Expr<R1> = Expr<Int>$.
+   and receive types `Expr<R1>` and `Expr<Int>`.
+5. Record the constraint `Expr<R1> = Expr<Int>`.
 4. Project runtime type on `Tag` upcasted from the corresponding projections 
-   and receive types $Tag<R2>$ and $Tag<String>$.
-5. Record the constraint $Tag<R2> = Tag<String>$.
+   and receive types `Tag<R2>` and `Tag<String>`.
+5. Record the constraint `Tag<R2> = Tag<String>`.
 
 ### Special cases
 
@@ -542,9 +542,9 @@ For flexible types, we have to follow their subtyping rules.
 [Explanation](https://github.com/JetBrains/kotlin/blob/master/spec-docs/flexible-java-types.md).
 More precisely:
 
-* $A :> \{B, C\} => A :> C$
-* $\{B, C\} :> A => B :> A$
-* $A = \{B, C\} => A :> C, B :> A$
+* $A :> (L..U) => A :> U$
+* $(L..U) :> A => L :> A$
+* $A = (L..U) => A :> U, L :> A$
 
 ## Special cases
 
@@ -567,23 +567,23 @@ class Con<in T>
 
 For example: 
 
-1. If the algorithm produces us a constraint $T :> Con<(Captured(*))>$, 
-   then this only provides us information that T is not nullable and $Con<T> :> Con<Con<Any?>>$.
+1. If the algorithm produces us a constraint `T :> Con<(Captured(*))>`, 
+   then this only provides us information that T is not nullable and `Con<T> :> Con<Con<Any?>>`.
    While if we uncapture it, 
-   we will receive $T :> Con<*>$, which leads to, for example, $T :> Con<*> :> Con<Int>$, which is unsound.
+   we will receive `T :> Con<*>`, which leads to, for example, `T :> Con<*> :> Con<Int>`, which is unsound.
 
-2. If the algorithm produces us a constraint $T :> Con<Inv<Captured(*)>>$, 
-   we will be able to approximate this constraint to $T :> Con<Inv<*>>$
+2. If the algorithm produces us a constraint `T :> Con<Inv<Captured(*)>>`,
+   we will be able to approximate this constraint to `T :> Con<Inv<*>>`
 
 3. On the contrary, for the upper bounds,
-   we are able to uncapture the constraint $T <: Con<(Captured(*))>$ but not $T <: Con<Inv<Captured(*)>>$.
+   we are able to uncapture the constraint `T <: Con<(Captured(*))>` but not `T <: Con<Inv<Captured(*)>>`.
 
 The idea is that by uncapturing the type with the captured type as a parameter, we are generalizing this type.
 So we may do it only if it relaxes the constraint.
 
 The information that we are loosing by this relaxation 
 is the equalities between the captured types (or existential variables).
-For example, if we have a constraints $V = Inv<(Captured(*))>$ and $U = Inv<(Captured(*))>$,
+For example, if we have a constraints `V = Inv<(Captured(*))>` and `U = Inv<(Captured(*))>`,
 where the captured types are the same, 
 we will be able to call a function `fun <T> foo(i1: Inv<T>, i2: Inv<T>)` with the values of types `V` and `U`.
 And these equalities are required 
